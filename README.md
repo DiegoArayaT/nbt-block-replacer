@@ -2,6 +2,8 @@
 
 Una herramienta web de **código abierto**, ultraligera y minimalista para auditar, explorar y reemplazar bloques en estructuras de Minecraft (`.nbt` de Structure Blocks) y schematics (`.schem` de WorldEdit / Create) por bloques de cualquier mod (*BetterNether*, *The Aether*, *Blood Magic*, *Create*, etc.).
 
+> 🌐 **Sitio Web Oficial / Demo en Vivo:** [schematics.datsec.dev](https://schematics.datsec.dev/)
+
 ---
 
 ## 📸 Demostración Visual: Antes y Después
