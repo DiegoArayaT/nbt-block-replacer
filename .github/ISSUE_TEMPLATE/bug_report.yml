@@ -1,0 +1,36 @@
+name: Reporte de Error (Bug)
+description: Notifica un problema o comportamiento inesperado al reemplazar bloques.
+title: "[BUG]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Gracias por tomarte el tiempo de reportar este problema para mejorar la herramienta.
+  - type: textarea
+    id: description
+    attributes:
+      label: Descripción del problema
+      description: Explica de forma clara y concisa qué ocurrió.
+    validations:
+      required: true
+  - type: input
+    id: structure_format
+    attributes:
+      label: Formato de estructura
+      description: ¿Es un archivo .nbt de Vanilla o un .schem de WorldEdit/Create?
+      placeholder: ".nbt / .schem"
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Pasos para reproducir
+      description: Lista los pasos necesarios para reproducir el fallo.
+      placeholder: |
+        1. Cargar archivo 'ejemplo.nbt'
+        2. Configurar regla para cambiar 'minecraft:stone' por 'create:andesite_casing'
+        3. Hacer clic en 'Aplicar y Descargar'
+        4. Ocurre el error...
+    validations:
+      required: true

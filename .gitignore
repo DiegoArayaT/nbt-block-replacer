@@ -5,3 +5,10 @@ Thumbs.db
 *.tmp
 dist/
 .vscode/
+
+# Secrets & Environment variables
+.env
+.env.*
+!.env.example
+*.pem
+*.key

@@ -1,0 +1,19 @@
+name: Solicitud de Función (Feature Request)
+description: Sugiere una nueva idea o mejora para el proyecto.
+title: "[FEATURE]: "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: ¿Qué problema resuelve tu sugerencia?
+      description: Una descripción clara de cuál es el caso de uso o necesidad.
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Solución o comportamiento deseado
+      description: Explica cómo te gustaría que funcionara la nueva característica.
+    validations:
+      required: true
