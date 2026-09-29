@@ -1,6 +1,7 @@
 /**
  * NBT & Schematic Block Replacer - Controller
  * Follows Style.md Industrial Minimalist Design System
+ * Features Smart Grouping: groups block variants by default for fast batch replacement
  */
 
 (function () {
@@ -8,6 +9,7 @@
     let replacementRules = [];
     let currentModFilter = 'all';
     let searchQuery = '';
+    let isGroupedView = true; // Agrupado por defecto
 
     // DOM Elements
     const dropzone = document.getElementById('dropzone');
@@ -16,6 +18,7 @@
     const dashboard = document.getElementById('dashboard');
     const demoBtn = document.getElementById('demo-btn');
     const themeToggleBtn = document.getElementById('theme-toggle');
+    const btnToggleView = document.getElementById('btn-toggle-view');
 
     // Stats Elements
     const statBlocks = document.getElementById('stat-blocks');
@@ -86,6 +89,16 @@
             renderPalette();
         });
 
+        if (btnToggleView) {
+            btnToggleView.addEventListener('click', () => {
+                isGroupedView = !isGroupedView;
+                btnToggleView.textContent = `VISTA: ${isGroupedView ? 'AGRUPADA' : 'DETALLADA'}`;
+                updateStats();
+                renderPalette();
+                showToast(`VISTA CAMBIADA A ${isGroupedView ? 'AGRUPADA (TIPOS ÚNICOS)' : 'DETALLADA (POR ESTADO)'}`);
+            });
+        }
+
         btnAddRule.addEventListener('click', () => {
             addRule();
         });
@@ -119,7 +132,7 @@
             showToast(`CARGANDO ${file.name.toUpperCase()}...`);
             currentStructure = await NBTEngine.loadFromFile(file);
 
-            // Iniciar sin reglas iniciales (deja que el usuario elija qué reemplazar)
+            // Iniciar sin reglas predefinidas
             replacementRules = [];
 
             updateStats();
@@ -130,7 +143,7 @@
 
             dashboard.classList.add('active');
             dropzone.scrollIntoView({ behavior: 'smooth' });
-            showToast(`CARGA EXITOSA: ${currentStructure.palette.length} TIPOS DE BLOQUES`);
+            showToast(`CARGA EXITOSA: ${currentStructure.palette.length} ESTADOS REGISTRADOS`);
         } catch (err) {
             console.error(err);
             alert("Error al leer el archivo: " + err.message);
@@ -148,6 +161,7 @@
                     type: 9,
                     value: [
                         { type: 10, value: { Name: { type: 8, value: "minecraft:oak_leaves" }, Properties: { type: 10, value: { distance: { type: 8, value: "1" }, persistent: { type: 8, value: "true" } } } } },
+                        { type: 10, value: { Name: { type: 8, value: "minecraft:oak_leaves" }, Properties: { type: 10, value: { distance: { type: 8, value: "7" }, persistent: { type: 8, value: "false" } } } } },
                         { type: 10, value: { Name: { type: 8, value: "minecraft:stone" } } },
                         { type: 10, value: { Name: { type: 8, value: "minecraft:cobblestone" } } },
                         { type: 10, value: { Name: { type: 8, value: "minecraft:oak_planks" } } },
@@ -158,13 +172,14 @@
                 },
                 blocks: {
                     type: 9,
-                    value: Array(548).fill(null).map(() => ({ type: 10, value: { state: { type: 3, value: 0 } } }))
-                        .concat(Array(320).fill(null).map(() => ({ type: 10, value: { state: { type: 3, value: 1 } } })))
-                        .concat(Array(180).fill(null).map(() => ({ type: 10, value: { state: { type: 3, value: 2 } } })))
-                        .concat(Array(420).fill(null).map(() => ({ type: 10, value: { state: { type: 3, value: 3 } } })))
-                        .concat(Array(150).fill(null).map(() => ({ type: 10, value: { state: { type: 3, value: 4 } } })))
-                        .concat(Array(187).fill(null).map(() => ({ type: 10, value: { state: { type: 3, value: 5 } } })))
-                        .concat(Array(80).fill(null).map(() => ({ type: 10, value: { state: { type: 3, value: 6 } } })))
+                    value: Array(300).fill(null).map(() => ({ type: 10, value: { state: { type: 3, value: 0 } } }))
+                        .concat(Array(248).fill(null).map(() => ({ type: 10, value: { state: { type: 3, value: 1 } } })))
+                        .concat(Array(320).fill(null).map(() => ({ type: 10, value: { state: { type: 3, value: 2 } } })))
+                        .concat(Array(180).fill(null).map(() => ({ type: 10, value: { state: { type: 3, value: 3 } } })))
+                        .concat(Array(420).fill(null).map(() => ({ type: 10, value: { state: { type: 3, value: 4 } } })))
+                        .concat(Array(150).fill(null).map(() => ({ type: 10, value: { state: { type: 3, value: 5 } } })))
+                        .concat(Array(187).fill(null).map(() => ({ type: 10, value: { state: { type: 3, value: 6 } } })))
+                        .concat(Array(80).fill(null).map(() => ({ type: 10, value: { state: { type: 3, value: 7 } } })))
                 }
             }
         };
@@ -182,14 +197,67 @@
         showToast("DEMOSTRACIÓN INDUSTRIAL CARGADA");
     }
 
+    // Process palette items (Grouped vs Detailed)
+    function getProcessedPalette() {
+        if (!currentStructure) return [];
+
+        if (isGroupedView) {
+            const map = new Map();
+            for (const item of currentStructure.palette) {
+                const existing = map.get(item.name);
+                const propStr = Object.entries(item.properties).map(([k, v]) => `${k}=${v}`).join(', ');
+
+                if (existing) {
+                    existing.count += item.count;
+                    existing.variants += 1;
+                    if (propStr) existing.propVariants.push(propStr);
+                } else {
+                    const [mod, blockName] = item.name.includes(':') ? item.name.split(':') : ['minecraft', item.name];
+                    map.set(item.name, {
+                        name: item.name,
+                        mod,
+                        blockName,
+                        count: item.count,
+                        variants: 1,
+                        propVariants: propStr ? [propStr] : [],
+                        singleProps: item.properties
+                    });
+                }
+            }
+            return Array.from(map.values());
+        } else {
+            // Detailed view (individual raw states)
+            return currentStructure.palette.map(item => {
+                const [mod, blockName] = item.name.includes(':') ? item.name.split(':') : ['minecraft', item.name];
+                return {
+                    name: item.name,
+                    mod,
+                    blockName,
+                    count: item.count,
+                    variants: 1,
+                    singleProps: item.properties
+                };
+            });
+        }
+    }
+
     // Update Stats
     function updateStats() {
         if (!currentStructure) return;
+        const processed = getProcessedPalette();
+        const uniqueCount = new Set(currentStructure.palette.map(p => p.name)).size;
+        const rawStatesCount = currentStructure.palette.length;
+
         statBlocks.textContent = currentStructure.totalBlocks.toLocaleString();
-        statTypes.textContent = currentStructure.palette.length.toString();
+        statTypes.textContent = isGroupedView 
+            ? `${uniqueCount} (${rawStatesCount} ESTADOS)` 
+            : `${rawStatesCount}`;
         statSize.textContent = `${currentStructure.size.x} × ${currentStructure.size.y} × ${currentStructure.size.z}`;
         statFile.textContent = currentStructure.filename.toUpperCase();
-        paletteCountBadge.textContent = `${currentStructure.palette.length} BLOQUES`;
+        
+        paletteCountBadge.textContent = isGroupedView 
+            ? `${uniqueCount} TIPOS ÚNICOS` 
+            : `${rawStatesCount} ESTADOS`;
     }
 
     // Generate Mod Filter Chips
@@ -225,17 +293,18 @@
         if (!currentStructure) return;
         paletteTbody.innerHTML = '';
 
-        const filtered = currentStructure.palette.filter(item => {
-            const [mod, blockName] = item.name.includes(':') ? item.name.split(':') : ['minecraft', item.name];
-            
-            if (currentModFilter !== 'all' && mod !== currentModFilter) {
+        const items = getProcessedPalette();
+
+        const filtered = items.filter(item => {
+            if (currentModFilter !== 'all' && item.mod !== currentModFilter) {
                 return false;
             }
 
             if (searchQuery) {
                 const matchName = item.name.toLowerCase().includes(searchQuery);
-                const matchProps = Object.entries(item.properties)
-                    .some(([k, v]) => `${k}=${v}`.toLowerCase().includes(searchQuery));
+                const matchProps = item.propVariants 
+                    ? item.propVariants.some(p => p.toLowerCase().includes(searchQuery))
+                    : Object.entries(item.singleProps || {}).some(([k, v]) => `${k}=${v}`.toLowerCase().includes(searchQuery));
                 return matchName || matchProps;
             }
 
@@ -252,27 +321,31 @@
         }
 
         filtered.forEach(item => {
-            const [mod, blockName] = item.name.includes(':') ? item.name.split(':') : ['minecraft', item.name];
             const pct = currentStructure.totalBlocks > 0 
                 ? ((item.count / currentStructure.totalBlocks) * 100).toFixed(1) 
                 : '0';
 
-            const propEntries = Object.entries(item.properties);
-            const propsText = propEntries.length > 0 
-                ? propEntries.map(([k, v]) => `${k}=${v}`).join(', ') 
-                : '';
+            // Properties / Variants display
+            let propsHtml = '<span style="color:var(--text-faint)">—</span>';
+            if (item.variants > 1) {
+                const allPropsTitle = item.propVariants.join(' // ');
+                propsHtml = `<span class="props-code variants" title="${allPropsTitle}">[${item.variants} VARIANTES DE ESTADO]</span>`;
+            } else if (item.singleProps && Object.keys(item.singleProps).length > 0) {
+                const pText = Object.entries(item.singleProps).map(([k, v]) => `${k}=${v}`).join(', ');
+                propsHtml = `<span class="props-code" title="${pText}">${pText}</span>`;
+            }
 
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td class="col-mod">
-                    <span class="mod-tag">${mod}</span>
+                    <span class="mod-tag">${item.mod}</span>
                 </td>
                 <td class="col-block">
-                    <div class="block-name-primary">${blockName}</div>
+                    <div class="block-name-primary">${item.blockName}</div>
                     <div class="block-name-full">${item.name}</div>
                 </td>
                 <td class="col-props">
-                    ${propsText ? `<span class="props-code" title="${propsText}">${propsText}</span>` : `<span style="color:var(--text-faint)">—</span>`}
+                    ${propsHtml}
                 </td>
                 <td class="col-count">
                     <div class="count-num">${item.count.toLocaleString()}</div>
@@ -295,7 +368,6 @@
 
     // User clicked "REEMPLAZAR" on a table row
     function handleTableReplaceClick(blockName) {
-        // Check if rule already exists for this block
         const existingRule = replacementRules.find(r => r.from === blockName);
         if (existingRule) {
             renderRules();
@@ -303,7 +375,6 @@
             return;
         }
 
-        // Create new rule for this block
         const newId = Date.now() + Math.random();
         replacementRules.push({
             id: newId,
@@ -325,7 +396,7 @@
                 const input = card.querySelector('.to-input');
                 if (input) input.focus();
             }
-        }, 50);
+        }, 60);
     }
 
     // Add generic rule
@@ -355,7 +426,7 @@
         updateSummary();
     }
 
-    // Render Rules (without suggested chips, with clean empty state)
+    // Render Rules
     function renderRules() {
         rulesContainer.innerHTML = '';
 
@@ -369,16 +440,34 @@
             return;
         }
 
-        const uniqueBlocks = Array.from(new Set(currentStructure ? currentStructure.palette.map(p => p.name) : []));
+        // Calculate count and variants for each block
+        const blockStats = new Map();
+        if (currentStructure) {
+            for (const item of currentStructure.palette) {
+                const s = blockStats.get(item.name) || { count: 0, variants: 0 };
+                s.count += item.count;
+                s.variants += 1;
+                blockStats.set(item.name, s);
+            }
+        }
+
+        const uniqueBlocks = Array.from(blockStats.keys()).sort();
 
         replacementRules.forEach((rule, idx) => {
             const card = document.createElement('div');
             card.className = 'rule-card';
             card.setAttribute('data-rule-id', rule.id);
 
-            const optionsHtml = uniqueBlocks.map(b => 
-                `<option value="${b}" ${b === rule.from ? 'selected' : ''}>${b}</option>`
-            ).join('');
+            const optionsHtml = uniqueBlocks.map(b => {
+                const st = blockStats.get(b);
+                const infoText = st ? ` (${st.count.toLocaleString()} bloques${st.variants > 1 ? ` · ${st.variants} variantes` : ''})` : '';
+                return `<option value="${b}" ${b === rule.from ? 'selected' : ''}>${b}${infoText}</option>`;
+            }).join('');
+
+            const currentStat = blockStats.get(rule.from) || { count: 0, variants: 1 };
+            const hintText = currentStat.variants > 1 
+                ? `Afectará a ${currentStat.count.toLocaleString()} bloques en ${currentStat.variants} variantes de estado simultáneamente.`
+                : `Afectará a ${currentStat.count.toLocaleString()} bloques en la estructura.`;
 
             card.innerHTML = `
                 <div class="rule-card-header">
@@ -397,17 +486,18 @@
                         <select class="rule-select from-select">
                             ${optionsHtml}
                         </select>
+                        <div class="rule-hint">${hintText}</div>
                     </div>
 
                     <div class="field-group">
-                        <label class="input-label">REEMPLAZAR POR (ID DEL MOD)</label>
+                        <label class="input-label">REEMPLAZAR POR (ID DEL MOD DESTINO)</label>
                         <input type="text" class="rule-input to-input" placeholder="ej. bloodmagic:dungeon_stone o aether:skyroot_leaves" value="${rule.to}">
                     </div>
 
                     <div class="rule-options-row">
                         <label class="checkbox-label">
                             <input type="checkbox" class="keep-props-chk" ${rule.keepProps ? 'checked' : ''}>
-                            <span>CONSERVAR PROPIEDADES DE ESTADO (FACING, WATERLOGGED, DISTANCE, ETC.)</span>
+                            <span>CONSERVAR PROPIEDADES DE ESTADO EN TODAS LAS VARIANTES (FACING, WATERLOGGED, DISTANCE, ETC.)</span>
                         </label>
                     </div>
                 </div>
@@ -416,6 +506,7 @@
             const fromSelect = card.querySelector('.from-select');
             fromSelect.addEventListener('change', (e) => {
                 rule.from = e.target.value;
+                renderRules();
                 updateSummary();
             });
 
@@ -486,6 +577,7 @@
 
             showToast(`OPERACIÓN COMPLETADA: ${result.totalReplacedBlocks.toLocaleString()} BLOQUES REEMPLAZADOS`);
             
+            updateStats();
             renderPalette();
             renderRules();
             updateSummary();
