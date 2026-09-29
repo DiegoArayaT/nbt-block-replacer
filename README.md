@@ -1,57 +1,88 @@
 # 🧱 Minecraft NBT & Schematic Block Replacer
 
-Una aplicación web moderna, ultraligera y elegante para inspeccionar y reemplazar bloques en estructuras de Minecraft (`.nbt`) y schematics (`.schem` / WorldEdit / Create) con bloques de cualquier mod (ej. *Blood Magic*, *The Aether*, *Create*, *Botania*).
+Una herramienta web de **código abierto**, ultraligera y minimalista para auditar, explorar y reemplazar bloques en estructuras de Minecraft (`.nbt` de Structure Blocks) y schematics (`.schem` de WorldEdit / Create) por bloques de cualquier mod (*BetterNether*, *The Aether*, *Blood Magic*, *Create*, etc.).
 
 ---
 
-## ✨ Características
+## 📸 Demostración Visual: Antes y Después
 
-- 🚀 **100% Client-Side y Privado:** No requiere servidores ni sube tus archivos a internet. Todo el procesamiento de compresión GZIP y análisis binario NBT ocurre directamente en tu navegador.
-- 🎨 **Interfaz Moderna Dark Mode:** Estilo obsidian con glassmorphism, microanimaciones y paleta con contrastes inspirados en Minecraft.
-- 🔍 **Explorador de Paleta Interactivo:**
-  - Filtro instantáneo por texto o propiedades de bloque (`facing=north`, `waterlogged=false`, etc.).
-  - Filtros rápidos por mods detectados (`minecraft`, `create`, `aether`, `bloodmagic`, etc.).
-  - Métrica de porcentaje y conteo exacto de bloques en la estructura.
-- 🔄 **Generador de Reglas de Reemplazo Múltiples:**
-  - Sustituye múltiples bloques al mismo tiempo.
-  - Atajos rápidos con sugerencias de mods populares.
-  - Opción para conservar propiedades de orientación y estado (`facing`, `distance`, etc.).
-- 💾 **Descarga Directa:** Genera el archivo `.nbt` o `.schem` modificado listo para cargar en tu servidor o mundo.
+A continuación se muestra un ejemplo real de reemplazo de materiales en una estructura compleja de más de 24.000 bloques:
+
+| 🏛️ Estructura Original (Vanilla) | 🔮 Estructura Modificada (Con Mods) |
+| :---: | :---: |
+| ![Estructura Original](assets/preview-before.jpg) | ![Estructura Modificada](assets/preview-after.png) |
+| *Bloque original: `minecraft:andesite_wall` (147 bloques)* | *Reemplazado por: `betternether:gloomwood_log` (147 bloques)* |
 
 ---
 
-## 🚀 Cómo Usar
+## ✨ Características Principales
 
-### Opción 1: Abrir directamente (Sin instalar nada)
-Simplemente haz doble clic en `index.html` para abrirlo en cualquier navegador moderno (Google Chrome, Edge, Brave, Firefox, etc.).
+- ⚡ **Agrupación Inteligente:** Detecta automáticamente todas las variantes de rotación y estado (`facing`, `distance`, `waterlogged`, etc.) de un mismo bloque y las unifica en una sola fila. ¡Un solo clic reemplaza todas las variantes en toda la estructura!
+- 🔒 **100% Client-Side y Privado:** Todo el procesamiento binario NBT y la compresión GZIP se ejecutan directamente en tu navegador mediante la API nativa de Streams. Tus archivos nunca salen de tu ordenador.
+- 📐 **Soporte Multi-formato:**
+  - Estructuras Vanilla de Minecraft (`.nbt` de bloques de estructura).
+  - Schematics modernos de WorldEdit, Litematica y Create (`.schem` / Sponge Schematic).
+- 🔍 **Explorador Técnico de Paleta:**
+  - Métricas instantáneas: dimensiones $(X \times Y \times Z)$, bloques totales y tipos únicos.
+  - Filtros rápidos por mod detectado (`minecraft`, `betternether`, `aether`, etc.).
+  - Búsqueda en tiempo real por ID de bloque o propiedades de estado.
+  - Alternador de vista: **Vista Agrupada** (tipos únicos) o **Vista Detallada** (estados individuales).
+- 🛠️ **Motor de Reemplazo por Lotes:**
+  - Configura múltiples reglas simultáneas.
+  - Casilla para conservar íntegras las propiedades de estado para que las hojas no se caigan solas (*leaf decay*) ni se desorienten las escaleras y troncos.
+- 🎨 **Estilo Industrial Minimalista:** Diseño limpio en escala de grises inspirado en Vercel, optimizado para desarrolladores y constructores.
 
-### Opción 2: Con servidor local (Vite / Live Server / Python)
-Si prefieres servirlo localmente:
+---
+
+## 🚀 Inicio Rápido
+
+### Opción 1: Abrir Directamente (Sin instalación)
+Haz doble clic en `index.html` para abrirlo en cualquier navegador web moderno (Google Chrome, Edge, Brave, Firefox, Safari).
+
+### Opción 2: Servidor Local
 ```bash
 # Con Python
 python -m http.server 3000
 
-# O con npx
-npx serve .
+# O con Node.js / npx
+npx serve -l 3000 .
 ```
-Abre en tu navegador `http://localhost:3000`.
+Abre en tu navegador: `http://localhost:3000`
 
-### Opción 3: Desplegar en GitHub Pages
-1. Sube esta carpeta a tu repositorio en GitHub.
-2. Ve a **Settings** $\rightarrow$ **Pages** en tu repositorio.
-3. En *Branch*, selecciona `main` y la carpeta `/ (root)`.
-4. ¡Tu editor estará disponible públicamente en `https://tu-usuario.github.io/tu-repo/`!
+### Opción 3: Despliegue en GitHub Pages
+1. Sube este repositorio a GitHub.
+2. Ve a **Settings** $\rightarrow$ **Pages**.
+3. En **Branch**, selecciona `main` y la carpeta `/ (root)`.
+4. Tu herramienta estará disponible online para todo el mundo.
 
 ---
 
-## 🛠️ Tecnologías
+## 📂 Estructura del Código
 
-- **Vanilla HTML5, CSS3 & JavaScript (ES6+):** Cero dependencias pesadas, arranque instantáneo.
-- **Web Streams API:** `DecompressionStream` y `CompressionStream` nativos para descompresión/compresión GZIP rápida.
-- **Motor NBT Puro (`nbt.js`):** Decodificador y serializador de etiquetas NBT completas (Compound, List, String, Int, Long/BigInt, Arrays, etc.).
+```text
+nbt-block-replacer/
+├── index.html        # Estructura semántica de la página
+├── style.css         # Sistema de diseño industrial minimalista (CSS puro)
+├── nbt.js            # Motor binario NBT puro (lectura, escritura y GZIP)
+├── app.js            # Controlador reactivo de la UI, agrupación y reemplazos
+├── assets/           # Capturas y previsualizaciones del proyecto
+├── package.json      # Metadatos del proyecto y scripts
+└── README.md         # Documentación del repositorio
+```
+
+---
+
+## 🤝 Contribuciones
+
+Las contribuciones son bienvenidas:
+1. Haz un Fork del proyecto.
+2. Crea tu rama de características (`git checkout -b feature/nueva-mejora`).
+3. Haz commit de tus cambios (`git commit -m 'feat: añadir nueva función'`).
+4. Haz push a la rama (`git push origin feature/nueva-mejora`).
+5. Abre un Pull Request.
 
 ---
 
 ## 📄 Licencia
 
-MIT License. Creado para constructores, modders y creadores de modpacks de Minecraft.
+Distribuido bajo la Licencia [MIT](LICENSE). Creado para la comunidad de constructores, modders y creadores de modpacks de Minecraft.
