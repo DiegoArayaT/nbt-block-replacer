@@ -1,0 +1,20 @@
+{
+  "name": "minecraft-nbt-block-replacer",
+  "version": "1.0.0",
+  "description": "Herramienta web moderna para explorar y reemplazar bloques en estructuras NBT y Schematics de Minecraft.",
+  "main": "index.html",
+  "scripts": {
+    "dev": "npx serve -l 3000 .",
+    "start": "npx serve -l 3000 ."
+  },
+  "keywords": [
+    "minecraft",
+    "nbt",
+    "schematic",
+    "worldedit",
+    "litematica",
+    "block-replacer"
+  ],
+  "author": "Diego",
+  "license": "MIT"
+}
