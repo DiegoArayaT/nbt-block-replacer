@@ -1,5 +1,6 @@
 /**
- * NBT & Schematic Block Replacer - Main Application Controller
+ * NBT & Schematic Block Replacer - Controller
+ * Follows Style.md Industrial Minimalist Design System
  */
 
 (function () {
@@ -8,7 +9,7 @@
     let currentModFilter = 'all';
     let searchQuery = '';
 
-    // Quick suggestions for mods
+    // Quick suggestions for mod blocks
     const MOD_SUGGESTIONS = [
         { label: 'Demon Stone', id: 'bloodmagic:dungeon_stone' },
         { label: 'Hojas Raicielo', id: 'aether:skyroot_leaves' },
@@ -21,8 +22,10 @@
     // DOM Elements
     const dropzone = document.getElementById('dropzone');
     const fileInput = document.getElementById('file-input');
+    const btnBrowse = document.getElementById('btn-browse');
     const dashboard = document.getElementById('dashboard');
     const demoBtn = document.getElementById('demo-btn');
+    const themeToggleBtn = document.getElementById('theme-toggle');
 
     // Stats Elements
     const statBlocks = document.getElementById('stat-blocks');
@@ -33,7 +36,7 @@
     // Palette & Search Elements
     const searchInput = document.getElementById('search-input');
     const modChipsContainer = document.getElementById('mod-chips');
-    const paletteList = document.getElementById('palette-list');
+    const paletteTbody = document.getElementById('palette-tbody');
     const paletteCountBadge = document.getElementById('palette-count-badge');
 
     // Rules Elements
@@ -43,9 +46,17 @@
     const btnDownload = document.getElementById('btn-download');
     const toast = document.getElementById('toast');
 
-    // Setup event listeners
+    // Initialize application
     function init() {
-        // Drag and drop
+        initTheme();
+
+        // Browse button
+        btnBrowse.addEventListener('click', (e) => {
+            e.stopPropagation();
+            fileInput.click();
+        });
+
+        // Drag and drop on dropzone
         dropzone.addEventListener('dragover', (e) => {
             e.preventDefault();
             dropzone.classList.add('dragover');
@@ -64,7 +75,7 @@
         });
 
         dropzone.addEventListener('click', (e) => {
-            if (e.target.tagName !== 'BUTTON' && !e.target.closest('button')) {
+            if (e.target !== btnBrowse && !e.target.closest('#demo-btn')) {
                 fileInput.click();
             }
         });
@@ -100,15 +111,33 @@
         });
     }
 
+    // Theme toggle (Sección 8 de Style.md)
+    function initTheme() {
+        const savedTheme = localStorage.getItem('mc_theme') || 'dark';
+        setTheme(savedTheme);
+
+        themeToggleBtn.addEventListener('click', () => {
+            const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            setTheme(newTheme);
+        });
+    }
+
+    function setTheme(theme) {
+        document.documentElement.setAttribute('data-theme', theme);
+        themeToggleBtn.textContent = `THEME: ${theme.toUpperCase()}`;
+        localStorage.setItem('mc_theme', theme);
+    }
+
     // Load file with NBTEngine
     async function loadFile(file) {
         try {
-            showToast(`Cargando ${file.name}...`);
+            showToast(`CARGANDO ${file.name.toUpperCase()}...`);
             currentStructure = await NBTEngine.loadFromFile(file);
 
             // Reset rules
             replacementRules = [];
-            addRule(); // Add first default rule
+            addRule();
 
             // Update UI
             updateStats();
@@ -119,14 +148,14 @@
 
             dashboard.classList.add('active');
             dropzone.scrollIntoView({ behavior: 'smooth' });
-            showToast(`¡Archivo cargado con éxito! ${currentStructure.palette.length} bloques encontrados.`);
+            showToast(`CARGA EXITOSA: ${currentStructure.palette.length} TIPOS DE BLOQUES`);
         } catch (err) {
             console.error(err);
             alert("Error al leer el archivo: " + err.message);
         }
     }
 
-    // Load Demo data if user doesn't have a file ready
+    // Load Demo data
     function loadDemoStructure() {
         const dummyNbt = {
             name: "",
@@ -169,17 +198,17 @@
         updateSummary();
 
         dashboard.classList.add('active');
-        showToast("Demostración cargada con éxito.");
+        showToast("DEMOSTRACIÓN INDUSTRIAL CARGADA");
     }
 
-    // Update Top Metric Cards
+    // Update Stats
     function updateStats() {
         if (!currentStructure) return;
         statBlocks.textContent = currentStructure.totalBlocks.toLocaleString();
         statTypes.textContent = currentStructure.palette.length.toString();
         statSize.textContent = `${currentStructure.size.x} × ${currentStructure.size.y} × ${currentStructure.size.z}`;
-        statFile.textContent = currentStructure.filename;
-        paletteCountBadge.textContent = `${currentStructure.palette.length} bloques`;
+        statFile.textContent = currentStructure.filename.toUpperCase();
+        paletteCountBadge.textContent = `${currentStructure.palette.length} BLOQUES`;
     }
 
     // Generate Mod Filter Chips
@@ -198,8 +227,9 @@
         modChipsContainer.innerHTML = '';
         mods.forEach(mod => {
             const chip = document.createElement('button');
+            chip.type = 'button';
             chip.className = `mod-chip ${currentModFilter === mod ? 'active' : ''}`;
-            chip.textContent = mod === 'all' ? 'Todos' : mod;
+            chip.textContent = mod === 'all' ? 'TODOS' : mod.toUpperCase();
             chip.addEventListener('click', () => {
                 currentModFilter = mod;
                 updateModChips();
@@ -209,21 +239,19 @@
         });
     }
 
-    // Render Palette List
+    // Render Palette in Semantic HTML Table (no squishing/overlapping!)
     function renderPalette() {
         if (!currentStructure) return;
-        paletteList.innerHTML = '';
+        paletteTbody.innerHTML = '';
 
-        // Filter palette
+        // Filter items
         const filtered = currentStructure.palette.filter(item => {
             const [mod, blockName] = item.name.includes(':') ? item.name.split(':') : ['minecraft', item.name];
             
-            // Mod filter
             if (currentModFilter !== 'all' && mod !== currentModFilter) {
                 return false;
             }
 
-            // Search filter
             if (searchQuery) {
                 const matchName = item.name.toLowerCase().includes(searchQuery);
                 const matchProps = Object.entries(item.properties)
@@ -234,11 +262,12 @@
             return true;
         });
 
-        // Sort by count descending
         filtered.sort((a, b) => b.count - a.count);
 
         if (filtered.length === 0) {
-            paletteList.innerHTML = '<div class="empty-state">No se encontraron bloques con ese criterio.</div>';
+            const tr = document.createElement('tr');
+            tr.innerHTML = `<td colspan="5" class="empty-state">NO SE ENCONTRARON BLOQUES CON EL CRITERIO ESPECIFICADO.</td>`;
+            paletteTbody.appendChild(tr);
             return;
         }
 
@@ -248,49 +277,41 @@
                 ? ((item.count / currentStructure.totalBlocks) * 100).toFixed(1) 
                 : '0';
 
-            const card = document.createElement('div');
-            card.className = 'palette-item';
-
-            // Properties string
-            let propsHtml = '';
             const propEntries = Object.entries(item.properties);
-            if (propEntries.length > 0) {
-                const propsText = propEntries.map(([k, v]) => `${k}=${v}`).join(', ');
-                propsHtml = `<span class="block-props" title="${propsText}">${propsText}</span>`;
-            }
+            const propsText = propEntries.length > 0 
+                ? propEntries.map(([k, v]) => `${k}=${v}`).join(', ') 
+                : '';
 
-            // Mod badge class
-            let modClass = 'other';
-            if (['minecraft', 'bloodmagic', 'aether', 'create'].includes(mod)) {
-                modClass = mod;
-            }
-
-            card.innerHTML = `
-                <div class="palette-item-info">
-                    <div class="palette-item-header">
-                        <span class="mod-badge ${modClass}">${mod}</span>
-                        <span class="block-name">${blockName}</span>
-                    </div>
-                    <div class="block-fullname mono">${item.name}</div>
-                    ${propsHtml}
-                </div>
-                <div class="palette-item-actions">
-                    <div class="block-count-badge">
-                        <div class="block-count-num">${item.count.toLocaleString()}</div>
-                        <div class="block-count-pct">${pct}%</div>
-                    </div>
-                    <button class="btn-quick-replace" title="Configurar reemplazo para este bloque">
-                        Reemplazar
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td class="col-mod">
+                    <span class="mod-tag">${mod}</span>
+                </td>
+                <td class="col-block">
+                    <div class="block-name-primary">${blockName}</div>
+                    <div class="block-name-full">${item.name}</div>
+                </td>
+                <td class="col-props">
+                    ${propsText ? `<span class="props-code" title="${propsText}">${propsText}</span>` : `<span style="color:var(--text-faint)">—</span>`}
+                </td>
+                <td class="col-count">
+                    <div class="count-num">${item.count.toLocaleString()}</div>
+                    <div class="count-pct">${pct}%</div>
+                </td>
+                <td class="col-action">
+                    <button type="button" class="btn-table-replace">
+                        REEMPLAZAR
                     </button>
-                </div>
+                </td>
             `;
 
-            // Quick replace click
-            card.querySelector('.btn-quick-replace').addEventListener('click', () => {
+            tr.querySelector('.btn-table-replace').addEventListener('click', () => {
                 addRule(item.name);
+                // Smooth scroll to rules panel
+                rulesContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             });
 
-            paletteList.appendChild(card);
+            paletteTbody.appendChild(tr);
         });
     }
 
@@ -298,7 +319,6 @@
     function addRule(fromBlock = '', toBlock = '') {
         if (!currentStructure && !fromBlock) return;
 
-        // Default 'from' if not provided
         if (!fromBlock && currentStructure && currentStructure.palette.length > 0) {
             fromBlock = currentStructure.palette[0].name;
         }
@@ -325,11 +345,8 @@
         }
     }
 
-    // Render Rules List
     function renderRules() {
         rulesContainer.innerHTML = '';
-
-        // Get unique block names for dropdown
         const uniqueBlocks = Array.from(new Set(currentStructure ? currentStructure.palette.map(p => p.name) : []));
 
         replacementRules.forEach((rule, idx) => {
@@ -342,39 +359,38 @@
 
             card.innerHTML = `
                 <div class="rule-card-header">
-                    <span class="rule-index">Regla #${idx + 1}</span>
-                    <button class="btn-remove-rule" title="Eliminar regla">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <span class="rule-index">REGLA // ${String(idx + 1).padStart(2, '0')}</span>
+                    <button type="button" class="btn-remove-rule" title="Eliminar regla">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                             <line x1="18" y1="6" x2="6" y2="18"></line>
                             <line x1="6" y1="6" x2="18" y2="18"></line>
                         </svg>
                     </button>
                 </div>
                 <div class="rule-inputs-row">
-                    <div class="input-group">
-                        <label>Bloque Original</label>
+                    <div>
+                        <label class="input-label">BLOQUE ORIGINAL</label>
                         <select class="rule-select from-select">
                             ${optionsHtml}
                         </select>
                     </div>
                     <div class="rule-arrow">→</div>
-                    <div class="input-group">
-                        <label>Bloque Nuevo (ID de mod)</label>
+                    <div>
+                        <label class="input-label">BLOQUE DESTINO (ID DE MOD)</label>
                         <input type="text" class="rule-input to-input" placeholder="ej. bloodmagic:dungeon_stone" value="${rule.to}">
                         <div class="quick-mod-suggestions">
-                            ${MOD_SUGGESTIONS.map(s => `<span class="mod-suggestion-chip" data-id="${s.id}">${s.label}</span>`).join('')}
+                            ${MOD_SUGGESTIONS.map(s => `<button type="button" class="mod-suggestion-chip" data-id="${s.id}">${s.label}</button>`).join('')}
                         </div>
                     </div>
                 </div>
                 <div class="rule-options-row">
                     <label class="checkbox-label">
                         <input type="checkbox" class="keep-props-chk" ${rule.keepProps ? 'checked' : ''}>
-                        <span>Conservar propiedades (facing, waterlogged, etc.)</span>
+                        <span>CONSERVAR PROPIEDADES DE ESTADO (FACING, WATERLOGGED, DISTANCE, ETC.)</span>
                     </label>
                 </div>
             `;
 
-            // Event bindings
             const fromSelect = card.querySelector('.from-select');
             fromSelect.addEventListener('change', (e) => {
                 rule.from = e.target.value;
@@ -392,7 +408,6 @@
                 rule.keepProps = e.target.checked;
             });
 
-            // Suggestions
             card.querySelectorAll('.mod-suggestion-chip').forEach(chip => {
                 chip.addEventListener('click', () => {
                     const chosenId = chip.getAttribute('data-id');
@@ -410,7 +425,6 @@
         });
     }
 
-    // Update Summary of replacements
     function updateSummary() {
         if (!currentStructure) return;
         let count = 0;
@@ -424,31 +438,28 @@
             }
         }
 
-        summaryCount.textContent = `${count.toLocaleString()} bloques`;
+        summaryCount.textContent = `${count.toLocaleString()} BLOQUES`;
         btnDownload.disabled = validRules.length === 0;
     }
 
-    // Execute Replacements & Download file
     async function executeAndDownload() {
         const validRules = replacementRules.filter(r => r.from && r.to.trim());
         if (validRules.length === 0) {
-            alert("Agrega al menos una regla de reemplazo válida.");
+            alert("Define al menos una regla con bloque de origen y destino válido.");
             return;
         }
 
         try {
-            btnDownload.textContent = "Procesando...";
+            btnDownload.textContent = "PROCESANDO...";
             btnDownload.disabled = true;
 
             const result = currentStructure.applyReplacements(validRules);
             const gzippedData = await currentStructure.exportGzipped();
 
-            // Create download
             const blob = new Blob([gzippedData], { type: 'application/octet-stream' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
 
-            // Name generation
             const baseName = currentStructure.filename.replace(/\.(nbt|schem|schematic)$/i, '');
             const ext = currentStructure.format === 'sponge_schem' ? '.schem' : '.nbt';
             a.href = url;
@@ -458,37 +469,27 @@
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
 
-            showToast(`¡Listo! Se reemplazaron ${result.totalReplacedBlocks.toLocaleString()} bloques.`);
+            showToast(`OPERACIÓN COMPLETADA: ${result.totalReplacedBlocks.toLocaleString()} BLOQUES REEMPLAZADOS`);
             
-            // Refresh views
             renderPalette();
             renderRules();
             updateSummary();
         } catch (err) {
             console.error(err);
-            alert("Error al guardar la estructura: " + err.message);
+            alert("Error al exportar la estructura: " + err.message);
         } finally {
-            btnDownload.innerHTML = `
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                    <polyline points="7 10 12 15 17 10"></polyline>
-                    <line x1="12" y1="15" x2="12" y2="3"></line>
-                </svg>
-                Aplicar y Descargar Estructura
-            `;
+            btnDownload.textContent = "APLICAR Y DESCARGAR ESTRUCTURA";
             btnDownload.disabled = false;
         }
     }
 
-    // Toast helper
     function showToast(msg) {
         toast.textContent = msg;
         toast.classList.add('show');
         setTimeout(() => {
             toast.classList.remove('show');
-        }, 3500);
+        }, 3000);
     }
 
-    // Initialize on load
     document.addEventListener('DOMContentLoaded', init);
 })();
