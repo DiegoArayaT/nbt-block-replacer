@@ -438,34 +438,42 @@ code, pre, .mono, [data-mono] {
 }
 
 /* ==========================================================================
-   SOLUCIÓN A LA TABLA DESTRUCTURADA: Tabla HTML Técnica y Robusta
+   TABLA TÉCNICA: Solución a scrolls horizontal y vertical
+   - scrollbar-gutter: stable garantiza que el scrollbar vertical NUNCA tape
+     el texto de los encabezados (th).
+   - table-layout: fixed y overflow-x: hidden evitan scrolls horizontales parásitos.
    ========================================================================== */
 .table-container {
     width: 100%;
     max-height: 480px;
-    overflow-y: auto;
-    overflow-x: auto;
+    overflow-y: scroll; /* Forzar canal estable consistente */
+    overflow-x: hidden; /* Cero scroll horizontal */
     border: 1px solid var(--border);
     border-radius: var(--radius);
     background: var(--bg);
+    scrollbar-gutter: stable;
 }
 
-/* Scrollbar industrial */
+/* Scrollbar industrial minimalista */
 .table-container::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+    width: 7px;
 }
 .table-container::-webkit-scrollbar-track {
-    background: var(--bg);
+    background: var(--surface);
+    border-left: 1px solid var(--border);
 }
 .table-container::-webkit-scrollbar-thumb {
     background: var(--border-strong);
     border-radius: 0;
 }
+.table-container::-webkit-scrollbar-thumb:hover {
+    background: var(--text-muted);
+}
 
 .palette-table {
     width: 100%;
     border-collapse: collapse;
+    table-layout: fixed; /* Anchos calculados estrictos */
     text-align: left;
     font-size: var(--text-sm);
 }
@@ -474,7 +482,6 @@ code, pre, .mono, [data-mono] {
     position: sticky;
     top: 0;
     background: var(--surface);
-    border-bottom: 1px solid var(--border-strong);
     z-index: 2;
 }
 
@@ -484,10 +491,12 @@ code, pre, .mono, [data-mono] {
     color: var(--text-muted);
     text-transform: uppercase;
     letter-spacing: 0.08em;
-    padding: 10px 16px;
+    padding: 12px 14px;
     font-weight: 600;
-    border-bottom: 1px solid var(--border);
+    border-bottom: 1px solid var(--border-strong);
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .palette-table tbody tr {
@@ -500,13 +509,14 @@ code, pre, .mono, [data-mono] {
 }
 
 .palette-table td {
-    padding: 12px 16px;
+    padding: 12px 14px;
     vertical-align: middle;
+    overflow: hidden;
 }
 
-/* Column styles */
+/* Proporciones de columnas fijas que suman exactamente 100% */
 .col-mod {
-    width: 110px;
+    width: 16%;
 }
 
 .mod-tag {
@@ -519,10 +529,14 @@ code, pre, .mono, [data-mono] {
     text-transform: uppercase;
     letter-spacing: 0.06em;
     display: inline-block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .col-block {
-    min-width: 240px;
+    width: 32%;
 }
 
 .block-name-primary {
@@ -530,6 +544,9 @@ code, pre, .mono, [data-mono] {
     font-size: var(--text-sm);
     font-weight: 700;
     color: var(--text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .block-name-full {
@@ -537,10 +554,13 @@ code, pre, .mono, [data-mono] {
     font-size: var(--text-xs);
     color: var(--text-faint);
     margin-top: 2px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .col-props {
-    min-width: 220px;
+    width: 24%;
 }
 
 .props-code {
@@ -552,14 +572,14 @@ code, pre, .mono, [data-mono] {
     padding: 2px 6px;
     border-radius: var(--radius);
     display: inline-block;
-    max-width: 280px;
+    max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
 .col-count {
-    width: 120px;
+    width: 14%;
     text-align: right;
 }
 
@@ -577,8 +597,9 @@ code, pre, .mono, [data-mono] {
 }
 
 .col-action {
-    width: 120px;
+    width: 14%;
     text-align: right;
+    padding-right: 18px !important; /* Espacio de resguardo frente al borde */
 }
 
 .btn-table-replace {
@@ -602,12 +623,37 @@ code, pre, .mono, [data-mono] {
     background: var(--border);
 }
 
-/* Replacer Section */
+/* ==========================================================================
+   ESTUDIO DE REGLAS DE REEMPLAZO (Diseño Vertical Limpio)
+   ========================================================================== */
 .replacer-grid {
-    display: grid;
-    grid-template-columns: 1fr;
+    display: flex;
+    flex-direction: column;
     gap: 16px;
     margin-bottom: 24px;
+}
+
+/* Empty state cuando no hay reglas agregadas */
+.empty-rules-box {
+    border: 1px dashed var(--border);
+    background: var(--bg);
+    padding: 32px 24px;
+    text-align: center;
+    border-radius: var(--radius);
+}
+
+.empty-rules-title {
+    font-family: var(--font-display);
+    font-size: var(--text-sm);
+    color: var(--text-muted);
+    letter-spacing: 0.08em;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+}
+
+.empty-rules-sub {
+    font-size: var(--text-xs);
+    color: var(--text-faint);
 }
 
 .rule-card {
@@ -652,34 +698,25 @@ code, pre, .mono, [data-mono] {
     border-color: var(--border);
 }
 
-.rule-inputs-row {
-    display: grid;
-    grid-template-columns: 1fr 30px 1fr;
-    align-items: center;
-    gap: 16px;
+/* Formulario apilado verticalmente: bloque original -> bloque destino */
+.rule-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
 }
 
-@media (max-width: 700px) {
-    .rule-inputs-row {
-        grid-template-columns: 1fr;
-    }
-}
-
-.rule-arrow {
-    font-family: var(--font-display);
-    color: var(--text-muted);
-    text-align: center;
-    font-size: 1.1rem;
+.field-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
 }
 
 .input-label {
-    display: block;
     font-family: var(--font-display);
     font-size: var(--text-xs);
     color: var(--text-muted);
     text-transform: uppercase;
     letter-spacing: 0.06em;
-    margin-bottom: 6px;
 }
 
 .rule-select, .rule-input {
@@ -687,7 +724,7 @@ code, pre, .mono, [data-mono] {
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: var(--radius);
-    padding: 8px 12px;
+    padding: 10px 14px;
     color: var(--text);
     font-family: var(--font-display);
     font-size: var(--text-sm);
@@ -699,32 +736,11 @@ code, pre, .mono, [data-mono] {
     border-color: var(--border-strong);
 }
 
-.quick-mod-suggestions {
-    margin-top: 8px;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-}
-
-.mod-suggestion-chip {
-    border: 1px solid var(--border);
-    background: transparent;
+.rule-input::placeholder {
     color: var(--text-faint);
-    font-family: var(--font-display);
-    font-size: var(--text-xs);
-    padding: 2px 6px;
-    border-radius: var(--radius);
-    cursor: pointer;
-    transition: all var(--transition);
-}
-
-.mod-suggestion-chip:hover {
-    border-color: var(--text);
-    color: var(--text);
 }
 
 .rule-options-row {
-    margin-top: 12px;
     padding-top: 10px;
     border-top: 1px solid var(--border);
     display: flex;
@@ -748,7 +764,7 @@ code, pre, .mono, [data-mono] {
     height: 14px;
 }
 
-/* Replacer actions footer */
+/* Footer de reemplazos */
 .replacer-footer {
     display: flex;
     align-items: center;
@@ -770,7 +786,7 @@ code, pre, .mono, [data-mono] {
     font-weight: 700;
 }
 
-/* Toast (Industrial alert) */
+/* Toast */
 .toast {
     position: fixed;
     bottom: 24px;

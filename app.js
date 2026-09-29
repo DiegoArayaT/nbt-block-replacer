@@ -9,16 +9,6 @@
     let currentModFilter = 'all';
     let searchQuery = '';
 
-    // Quick suggestions for mod blocks
-    const MOD_SUGGESTIONS = [
-        { label: 'Demon Stone', id: 'bloodmagic:dungeon_stone' },
-        { label: 'Hojas Raicielo', id: 'aether:skyroot_leaves' },
-        { label: 'Madera Raicielo', id: 'aether:skyroot_log' },
-        { label: 'Andesite Casing', id: 'create:andesite_casing' },
-        { label: 'Brass Casing', id: 'create:brass_casing' },
-        { label: 'Livingrock', id: 'botania:livingrock' }
-    ];
-
     // DOM Elements
     const dropzone = document.getElementById('dropzone');
     const fileInput = document.getElementById('file-input');
@@ -50,13 +40,11 @@
     function init() {
         initTheme();
 
-        // Browse button
         btnBrowse.addEventListener('click', (e) => {
             e.stopPropagation();
             fileInput.click();
         });
 
-        // Drag and drop on dropzone
         dropzone.addEventListener('dragover', (e) => {
             e.preventDefault();
             dropzone.classList.add('dragover');
@@ -86,7 +74,6 @@
             }
         });
 
-        // Demo button
         if (demoBtn) {
             demoBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
@@ -94,24 +81,21 @@
             });
         }
 
-        // Search and filter
         searchInput.addEventListener('input', (e) => {
             searchQuery = e.target.value.toLowerCase().trim();
             renderPalette();
         });
 
-        // Add Rule
         btnAddRule.addEventListener('click', () => {
             addRule();
         });
 
-        // Download
         btnDownload.addEventListener('click', () => {
             executeAndDownload();
         });
     }
 
-    // Theme toggle (Sección 8 de Style.md)
+    // Theme toggle
     function initTheme() {
         const savedTheme = localStorage.getItem('mc_theme') || 'dark';
         setTheme(savedTheme);
@@ -135,11 +119,9 @@
             showToast(`CARGANDO ${file.name.toUpperCase()}...`);
             currentStructure = await NBTEngine.loadFromFile(file);
 
-            // Reset rules
+            // Iniciar sin reglas iniciales (deja que el usuario elija qué reemplazar)
             replacementRules = [];
-            addRule();
 
-            // Update UI
             updateStats();
             updateModChips();
             renderPalette();
@@ -189,7 +171,6 @@
 
         currentStructure = new NBTEngine.StructureFile(dummyNbt, "torre_demo.nbt");
         replacementRules = [];
-        addRule("minecraft:oak_leaves", "aether:skyroot_leaves");
 
         updateStats();
         updateModChips();
@@ -239,12 +220,11 @@
         });
     }
 
-    // Render Palette in Semantic HTML Table (no squishing/overlapping!)
+    // Render Palette in Semantic HTML Table
     function renderPalette() {
         if (!currentStructure) return;
         paletteTbody.innerHTML = '';
 
-        // Filter items
         const filtered = currentStructure.palette.filter(item => {
             const [mod, blockName] = item.name.includes(':') ? item.name.split(':') : ['minecraft', item.name];
             
@@ -299,23 +279,56 @@
                     <div class="count-pct">${pct}%</div>
                 </td>
                 <td class="col-action">
-                    <button type="button" class="btn-table-replace">
+                    <button type="button" class="btn-table-replace" data-block="${item.name}">
                         REEMPLAZAR
                     </button>
                 </td>
             `;
 
             tr.querySelector('.btn-table-replace').addEventListener('click', () => {
-                addRule(item.name);
-                // Smooth scroll to rules panel
-                rulesContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                handleTableReplaceClick(item.name);
             });
 
             paletteTbody.appendChild(tr);
         });
     }
 
-    // Rules Management
+    // User clicked "REEMPLAZAR" on a table row
+    function handleTableReplaceClick(blockName) {
+        // Check if rule already exists for this block
+        const existingRule = replacementRules.find(r => r.from === blockName);
+        if (existingRule) {
+            renderRules();
+            focusRuleInput(existingRule.id);
+            return;
+        }
+
+        // Create new rule for this block
+        const newId = Date.now() + Math.random();
+        replacementRules.push({
+            id: newId,
+            from: blockName,
+            to: '',
+            keepProps: true
+        });
+
+        renderRules();
+        updateSummary();
+        focusRuleInput(newId);
+    }
+
+    function focusRuleInput(ruleId) {
+        setTimeout(() => {
+            const card = document.querySelector(`[data-rule-id="${ruleId}"]`);
+            if (card) {
+                card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                const input = card.querySelector('.to-input');
+                if (input) input.focus();
+            }
+        }, 50);
+    }
+
+    // Add generic rule
     function addRule(fromBlock = '', toBlock = '') {
         if (!currentStructure && !fromBlock) return;
 
@@ -323,35 +336,45 @@
             fromBlock = currentStructure.palette[0].name;
         }
 
-        const newRule = {
-            id: Date.now() + Math.random(),
+        const newId = Date.now() + Math.random();
+        replacementRules.push({
+            id: newId,
             from: fromBlock,
             to: toBlock,
             keepProps: true
-        };
+        });
 
-        replacementRules.push(newRule);
         renderRules();
         updateSummary();
+        focusRuleInput(newId);
     }
 
     function removeRule(ruleId) {
         replacementRules = replacementRules.filter(r => r.id !== ruleId);
-        if (replacementRules.length === 0) {
-            addRule();
-        } else {
-            renderRules();
-            updateSummary();
-        }
+        renderRules();
+        updateSummary();
     }
 
+    // Render Rules (without suggested chips, with clean empty state)
     function renderRules() {
         rulesContainer.innerHTML = '';
+
+        if (replacementRules.length === 0) {
+            rulesContainer.innerHTML = `
+                <div class="empty-rules-box">
+                    <div class="empty-rules-title">NO HAY REGLAS ACTIVAS</div>
+                    <div class="empty-rules-sub">Haz clic en <strong>REEMPLAZAR</strong> en cualquier bloque de la tabla superior para agregarlo aquí, o pulsa el botón de abajo para agregar una regla manual.</div>
+                </div>
+            `;
+            return;
+        }
+
         const uniqueBlocks = Array.from(new Set(currentStructure ? currentStructure.palette.map(p => p.name) : []));
 
         replacementRules.forEach((rule, idx) => {
             const card = document.createElement('div');
             card.className = 'rule-card';
+            card.setAttribute('data-rule-id', rule.id);
 
             const optionsHtml = uniqueBlocks.map(b => 
                 `<option value="${b}" ${b === rule.from ? 'selected' : ''}>${b}</option>`
@@ -367,27 +390,26 @@
                         </svg>
                     </button>
                 </div>
-                <div class="rule-inputs-row">
-                    <div>
-                        <label class="input-label">BLOQUE ORIGINAL</label>
+
+                <div class="rule-fields">
+                    <div class="field-group">
+                        <label class="input-label">BLOQUE A REEMPLAZAR</label>
                         <select class="rule-select from-select">
                             ${optionsHtml}
                         </select>
                     </div>
-                    <div class="rule-arrow">→</div>
-                    <div>
-                        <label class="input-label">BLOQUE DESTINO (ID DE MOD)</label>
-                        <input type="text" class="rule-input to-input" placeholder="ej. bloodmagic:dungeon_stone" value="${rule.to}">
-                        <div class="quick-mod-suggestions">
-                            ${MOD_SUGGESTIONS.map(s => `<button type="button" class="mod-suggestion-chip" data-id="${s.id}">${s.label}</button>`).join('')}
-                        </div>
+
+                    <div class="field-group">
+                        <label class="input-label">REEMPLAZAR POR (ID DEL MOD)</label>
+                        <input type="text" class="rule-input to-input" placeholder="ej. bloodmagic:dungeon_stone o aether:skyroot_leaves" value="${rule.to}">
                     </div>
-                </div>
-                <div class="rule-options-row">
-                    <label class="checkbox-label">
-                        <input type="checkbox" class="keep-props-chk" ${rule.keepProps ? 'checked' : ''}>
-                        <span>CONSERVAR PROPIEDADES DE ESTADO (FACING, WATERLOGGED, DISTANCE, ETC.)</span>
-                    </label>
+
+                    <div class="rule-options-row">
+                        <label class="checkbox-label">
+                            <input type="checkbox" class="keep-props-chk" ${rule.keepProps ? 'checked' : ''}>
+                            <span>CONSERVAR PROPIEDADES DE ESTADO (FACING, WATERLOGGED, DISTANCE, ETC.)</span>
+                        </label>
+                    </div>
                 </div>
             `;
 
@@ -408,15 +430,6 @@
                 rule.keepProps = e.target.checked;
             });
 
-            card.querySelectorAll('.mod-suggestion-chip').forEach(chip => {
-                chip.addEventListener('click', () => {
-                    const chosenId = chip.getAttribute('data-id');
-                    toInput.value = chosenId;
-                    rule.to = chosenId;
-                    updateSummary();
-                });
-            });
-
             card.querySelector('.btn-remove-rule').addEventListener('click', () => {
                 removeRule(rule.id);
             });
@@ -425,6 +438,7 @@
         });
     }
 
+    // Update Summary
     function updateSummary() {
         if (!currentStructure) return;
         let count = 0;
@@ -442,6 +456,7 @@
         btnDownload.disabled = validRules.length === 0;
     }
 
+    // Execute Replacements & Download
     async function executeAndDownload() {
         const validRules = replacementRules.filter(r => r.from && r.to.trim());
         if (validRules.length === 0) {
