@@ -39,6 +39,44 @@
     const btnDownload = document.getElementById('btn-download');
     const toast = document.getElementById('toast');
 
+    // Minecraft 1.21 Asset & Texture Helpers
+    const MC_CDN_BASE = 'https://cdn.jsdelivr.net/gh/InventivetalentDev/minecraft-assets@1.21.1/assets/minecraft/textures/';
+    let mcBlocksMap = null;
+
+    function getMcBlocksMap() {
+        if (!mcBlocksMap && window.MINECRAFT_BLOCKS) {
+            mcBlocksMap = new Map();
+            for (const b of window.MINECRAFT_BLOCKS) {
+                mcBlocksMap.set(b.id, b);
+                if (b.id.startsWith('minecraft:')) {
+                    mcBlocksMap.set(b.id.replace('minecraft:', ''), b);
+                }
+            }
+        }
+        return mcBlocksMap;
+    }
+
+    function getBlockIconUrl(blockIdOrPath) {
+        if (!blockIdOrPath) return '';
+        if (blockIdOrPath.includes('/')) {
+            return MC_CDN_BASE + blockIdOrPath;
+        }
+        const map = getMcBlocksMap();
+        const b = map ? map.get(blockIdOrPath) : null;
+        if (b && b.icon) {
+            return MC_CDN_BASE + b.icon;
+        }
+        return '';
+    }
+
+    function renderBlockIconHtml(blockId, customClass = 'mc-block-icon') {
+        const url = getBlockIconUrl(blockId);
+        if (url) {
+            return `<img src="${url}" class="${customClass}" loading="lazy" alt="" onerror="this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.style.display='flex';" /><div class="mc-icon-fallback" style="display:none;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/></svg></div>`;
+        }
+        return `<div class="mc-icon-fallback"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/></svg></div>`;
+    }
+
     // Initialize application
     function init() {
         initTheme();
@@ -105,6 +143,15 @@
 
         btnDownload.addEventListener('click', () => {
             executeAndDownload();
+        });
+
+        // Cerrar menús desplegables al hacer clic fuera
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.block-combobox-wrapper')) {
+                document.querySelectorAll('.block-dropdown-panel').forEach(p => {
+                    p.style.display = 'none';
+                });
+            }
         });
     }
 
@@ -341,8 +388,15 @@
                     <span class="mod-tag">${item.mod}</span>
                 </td>
                 <td class="col-block">
-                    <div class="block-name-primary">${item.blockName}</div>
-                    <div class="block-name-full">${item.name}</div>
+                    <div class="table-block-cell">
+                        <div class="table-block-icon">
+                            ${renderBlockIconHtml(item.name, 'mc-block-icon')}
+                        </div>
+                        <div>
+                            <div class="block-name-primary">${item.blockName}</div>
+                            <div class="block-name-full">${item.name}</div>
+                        </div>
+                    </div>
                 </td>
                 <td class="col-props">
                     ${propsHtml}
@@ -490,8 +544,30 @@
                     </div>
 
                     <div class="field-group">
-                        <label class="input-label">REEMPLAZAR POR (ID DEL MOD DESTINO)</label>
-                        <input type="text" class="rule-input to-input" placeholder="ej. bloodmagic:dungeon_stone o aether:skyroot_leaves" value="${rule.to}">
+                        <label class="input-label">REEMPLAZAR POR (SELECCIONAR BLOQUE 1.21 O MOD)</label>
+                        <div class="block-combobox-wrapper">
+                            <div class="block-input-container">
+                                <div class="block-preview-box">
+                                    ${renderBlockIconHtml(rule.to)}
+                                </div>
+                                <input type="text" class="rule-input to-input block-combobox-input" placeholder="Buscar bloque de Minecraft o escribir mod ID..." value="${rule.to}" autocomplete="off" spellcheck="false">
+                                <button type="button" class="btn-combobox-toggle" title="Abrir catálogo de bloques">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="6 9 12 15 18 9"></polyline>
+                                    </svg>
+                                </button>
+                            </div>
+                            <div class="block-dropdown-panel" style="display: none;">
+                                <div class="block-dropdown-header">
+                                    <span class="block-dropdown-counter">CATÁLOGO 1.21</span>
+                                    <span class="block-dropdown-tag">MOSTRANDO 20</span>
+                                </div>
+                                <div class="block-dropdown-list"></div>
+                                <div class="block-dropdown-footer">
+                                    <button type="button" class="btn-load-more-blocks">CARGAR MÁS BLOQUES (+20)</button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="rule-options-row">
@@ -510,11 +586,8 @@
                 updateSummary();
             });
 
-            const toInput = card.querySelector('.to-input');
-            toInput.addEventListener('input', (e) => {
-                rule.to = e.target.value;
-                updateSummary();
-            });
+            // Configurar Combobox con buscador interactivo y paginación de 20 en 20
+            setupCombobox(card.querySelector('.block-combobox-wrapper'), rule);
 
             const keepPropsChk = card.querySelector('.keep-props-chk');
             keepPropsChk.addEventListener('change', (e) => {
@@ -526,6 +599,187 @@
             });
 
             rulesContainer.appendChild(card);
+        });
+    }
+
+    // Configuración del Combobox de bloques Minecraft con carga de 20 en 20
+    function setupCombobox(wrapper, rule) {
+        if (!wrapper) return;
+        const input = wrapper.querySelector('.block-combobox-input');
+        const toggleBtn = wrapper.querySelector('.btn-combobox-toggle');
+        const panel = wrapper.querySelector('.block-dropdown-panel');
+        const list = wrapper.querySelector('.block-dropdown-list');
+        const counter = wrapper.querySelector('.block-dropdown-counter');
+        const previewBox = wrapper.querySelector('.block-preview-box');
+        const loadMoreBtn = wrapper.querySelector('.btn-load-more-blocks');
+
+        const PAGE_SIZE = 20;
+        let visibleCount = PAGE_SIZE;
+        let currentFilter = (rule.to || '').trim().toLowerCase();
+
+        function getFilteredList() {
+            const blocks = window.MINECRAFT_BLOCKS || [];
+            if (!currentFilter) return blocks;
+            return blocks.filter(b => 
+                b.name.toLowerCase().includes(currentFilter) ||
+                b.id.toLowerCase().includes(currentFilter)
+            );
+        }
+
+        function updatePreview() {
+            if (previewBox) {
+                previewBox.innerHTML = renderBlockIconHtml(rule.to);
+            }
+        }
+
+        function renderListItems(append = false) {
+            const filtered = getFilteredList();
+
+            if (!append) {
+                list.innerHTML = '';
+                visibleCount = PAGE_SIZE;
+                list.scrollTop = 0;
+
+                // Opción para mod / ID personalizado si no coincide exactamente
+                if (currentFilter && !filtered.some(b => b.id.toLowerCase() === currentFilter || b.name.toLowerCase() === currentFilter)) {
+                    const customItem = document.createElement('div');
+                    customItem.className = 'block-dropdown-item custom-mod-option';
+                    customItem.innerHTML = `
+                        <div class="block-item-icon-box" style="font-size: 14px;">⚡</div>
+                        <div class="block-item-info">
+                            <div class="block-item-name">Usar ID personalizado / Mod</div>
+                            <div class="block-item-id">${input.value.trim()}</div>
+                        </div>
+                    `;
+                    customItem.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        selectBlock(input.value.trim());
+                    });
+                    list.appendChild(customItem);
+                }
+            }
+
+            const currentRenderedCount = list.querySelectorAll('.block-dropdown-item:not(.custom-mod-option)').length;
+            const itemsToRender = filtered.slice(currentRenderedCount, visibleCount);
+
+            if (filtered.length === 0 && !list.querySelector('.custom-mod-option')) {
+                list.innerHTML = `<div class="block-dropdown-empty">No se encontraron bloques con "${input.value.trim()}".<br><span style="color:var(--text-muted)">Presiona Enter para usarlo como ID de mod.</span></div>`;
+                if (counter) counter.textContent = '0 BLOQUES';
+                if (loadMoreBtn) loadMoreBtn.style.display = 'none';
+                return;
+            }
+
+            itemsToRender.forEach(block => {
+                const item = document.createElement('div');
+                item.className = 'block-dropdown-item' + (rule.to === block.id ? ' is-selected' : '');
+                item.innerHTML = `
+                    <div class="block-item-icon-box">
+                        ${renderBlockIconHtml(block.id)}
+                    </div>
+                    <div class="block-item-info">
+                        <div class="block-item-name">${block.name}</div>
+                        <div class="block-item-id">${block.id}</div>
+                    </div>
+                `;
+                item.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    selectBlock(block.id);
+                });
+                list.appendChild(item);
+            });
+
+            const totalRendered = list.querySelectorAll('.block-dropdown-item:not(.custom-mod-option)').length;
+            if (counter) {
+                counter.textContent = `MOSTRANDO ${totalRendered} DE ${filtered.length.toLocaleString()} BLOQUES`;
+            }
+
+            if (loadMoreBtn) {
+                if (totalRendered >= filtered.length) {
+                    loadMoreBtn.style.display = 'none';
+                } else {
+                    loadMoreBtn.style.display = 'block';
+                    loadMoreBtn.textContent = `CARGAR MÁS (+${Math.min(PAGE_SIZE, filtered.length - totalRendered)})`;
+                }
+            }
+        }
+
+        function selectBlock(blockId) {
+            rule.to = blockId;
+            input.value = blockId;
+            updatePreview();
+            closePanel();
+            updateSummary();
+        }
+
+        function openPanel() {
+            document.querySelectorAll('.block-dropdown-panel').forEach(p => {
+                if (p !== panel) p.style.display = 'none';
+            });
+            panel.style.display = 'flex';
+            currentFilter = input.value.trim().toLowerCase();
+            visibleCount = PAGE_SIZE;
+            renderListItems(false);
+        }
+
+        function closePanel() {
+            panel.style.display = 'none';
+        }
+
+        toggleBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (panel.style.display === 'none') {
+                openPanel();
+                input.focus();
+            } else {
+                closePanel();
+            }
+        });
+
+        input.addEventListener('focus', () => {
+            openPanel();
+        });
+
+        input.addEventListener('input', (e) => {
+            rule.to = e.target.value;
+            currentFilter = e.target.value.trim().toLowerCase();
+            updatePreview();
+            if (panel.style.display === 'none') {
+                panel.style.display = 'flex';
+            }
+            visibleCount = PAGE_SIZE;
+            renderListItems(false);
+            updateSummary();
+        });
+
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closePanel();
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                const firstOption = list.querySelector('.block-dropdown-item');
+                if (firstOption) {
+                    firstOption.click();
+                } else {
+                    closePanel();
+                }
+            }
+        });
+
+        // Scroll listener: carga automáticamente los siguientes 20 bloques al llegar abajo
+        list.addEventListener('scroll', () => {
+            const filtered = getFilteredList();
+            const totalRendered = list.querySelectorAll('.block-dropdown-item:not(.custom-mod-option)').length;
+            if (totalRendered < filtered.length && (list.scrollTop + list.clientHeight >= list.scrollHeight - 35)) {
+                visibleCount += PAGE_SIZE;
+                renderListItems(true);
+            }
+        });
+
+        loadMoreBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const filtered = getFilteredList();
+            visibleCount += PAGE_SIZE;
+            renderListItems(true);
         });
     }
 

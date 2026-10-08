@@ -855,3 +855,261 @@ code, pre, .mono, [data-mono] {
     font-family: var(--font-display);
     font-size: var(--text-sm);
 }
+
+/* ==========================================================================
+   SELECTOR DE BLOQUES MINECRAFT 2D (Combobox con Paginación de 20 en 20)
+   ========================================================================== */
+.block-combobox-wrapper {
+    position: relative;
+    width: 100%;
+}
+
+.block-input-container {
+    display: flex;
+    align-items: center;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 4px 8px;
+    gap: 8px;
+    transition: all var(--transition);
+}
+
+.block-input-container:focus-within {
+    border-color: var(--border-strong);
+    background: var(--surface-hover);
+}
+
+.block-preview-box {
+    width: 28px;
+    height: 28px;
+    min-width: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+}
+
+.mc-block-icon {
+    width: 22px;
+    height: 22px;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+    object-fit: contain;
+}
+
+.mc-icon-fallback {
+    width: 16px;
+    height: 16px;
+    color: var(--text-faint);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.block-combobox-input {
+    flex: 1;
+    background: transparent !important;
+    border: none !important;
+    padding: 6px 4px !important;
+    color: var(--text);
+    font-family: var(--font-display);
+    font-size: var(--text-sm);
+    outline: none !important;
+}
+
+.btn-combobox-toggle {
+    background: transparent;
+    border: none;
+    color: var(--text-faint);
+    cursor: pointer;
+    padding: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius);
+    transition: all var(--transition);
+}
+
+.btn-combobox-toggle:hover {
+    color: var(--text);
+    background: var(--border);
+}
+
+.block-dropdown-panel {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    right: 0;
+    z-index: 200;
+    background: var(--surface);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6);
+    display: flex;
+    flex-direction: column;
+    max-height: 380px;
+    animation: fadeInDropdown 140ms ease-out;
+}
+
+@keyframes fadeInDropdown {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.block-dropdown-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    font-family: var(--font-display);
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+}
+
+.block-dropdown-counter {
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.block-dropdown-tag {
+    background: var(--border);
+    padding: 2px 6px;
+    border-radius: var(--radius);
+    font-size: 10px;
+    color: var(--text);
+}
+
+.block-dropdown-list {
+    overflow-y: auto;
+    max-height: 270px;
+    display: flex;
+    flex-direction: column;
+    overscroll-behavior: contain;
+}
+
+.block-dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 12px;
+    cursor: pointer;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+    transition: background var(--transition);
+}
+
+.block-dropdown-item:hover,
+.block-dropdown-item.is-selected {
+    background: var(--surface-hover);
+}
+
+.block-item-icon-box {
+    width: 26px;
+    height: 26px;
+    min-width: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+}
+
+.block-item-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.block-item-name {
+    font-family: var(--font-display);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.block-item-id {
+    font-family: var(--font-display);
+    font-size: var(--text-xs);
+    color: var(--text-faint);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.block-dropdown-item.custom-mod-option {
+    background: rgba(255, 255, 255, 0.03);
+    border-bottom: 1px solid var(--border);
+}
+
+.block-dropdown-item.custom-mod-option .block-item-name {
+    color: var(--text);
+}
+
+.block-dropdown-footer {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 12px;
+    background: var(--bg);
+    border-top: 1px solid var(--border);
+}
+
+.btn-load-more-blocks {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    font-family: var(--font-display);
+    font-size: var(--text-xs);
+    padding: 6px 14px;
+    border-radius: var(--radius);
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    width: 100%;
+    transition: all var(--transition);
+}
+
+.btn-load-more-blocks:hover {
+    color: var(--text);
+    border-color: var(--border-strong);
+    background: var(--surface-hover);
+}
+
+.block-dropdown-empty {
+    padding: 24px 16px;
+    text-align: center;
+    font-family: var(--font-display);
+    font-size: var(--text-xs);
+    color: var(--text-faint);
+}
+
+/* Iconos integrados en la tabla de paleta */
+.table-block-cell {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.table-block-icon {
+    width: 24px;
+    height: 24px;
+    min-width: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+}
+
