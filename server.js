@@ -158,11 +158,14 @@ const server = http.createServer((req, res) => {
 
         const ext = path.extname(filePath).toLowerCase();
         const contentType = MIME_TYPES[ext] || 'application/octet-stream';
+        const cacheControl = (ext === '.html')
+            ? 'no-cache, no-store, must-revalidate'
+            : 'public, max-age=300';
 
         res.writeHead(200, {
             'Content-Type': contentType,
             'Content-Length': stats.size,
-            'Cache-Control': 'public, max-age=60'
+            'Cache-Control': cacheControl
         });
 
         const stream = fs.createReadStream(filePath);
